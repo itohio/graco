@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"sync"
+
+	"github.com/itohio/graco"
 )
 
 type Node[T any] struct {
@@ -63,6 +65,24 @@ func (n *Node[T]) Start(ctx context.Context) error {
 	}
 
 	c := make(chan []any)
+	var globalErr error
+	go func() {
+		for res := range c {
+			arr := make([]T, len(res))
+			for i, in := range res {
+				val, ok := in.(T)
+				if !ok {
+					panic("type corruption")
+				}
+				arr[i] = val
+			}
+
+			if err := n.output.Send(ctx, arr); err != nil {
+				globalErr = err
+				return
+			}
+		}
+	}()
 
 	var wg sync.WaitGroup
 	for i, in := range n.inputs {
@@ -72,26 +92,19 @@ func (n *Node[T]) Start(ctx context.Context) error {
 			for {
 				val, err := in.Recv(ctx)
 				if err != nil {
-					return // FIXME err
+					if globalErr == nil {
+						globalErr = err
+					}
+					return
 				}
-				n.synchro.Add(i, val)
+				res := n.synchro.Add(i, val)
+				if res != nil {
+					c <- res
+				}
 			}
 		}(i, in)
 	}
-
-	for res := range c {
-		arr := make([]T, len(n.inputs))
-		for i, in := range n.inputs {
-			val, err := in.Recv(ctx)
-			if err != nil {
-				return err
-			}
-
-			arr[i] = val
-		}
-
-		if err := n.output.Send(ctx, arr); err != nil {
-			return err
-		}
-	}
+	wg.Wait()
+	close(c)
+	return globalErr
 }

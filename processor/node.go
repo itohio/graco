@@ -3,19 +3,30 @@ package processor
 import (
 	"context"
 	"errors"
+	"io"
+
+	"github.com/itohio/graco"
 )
 
-type ProcessorFunc[Tin, To any] func(context.Context, Tin) (To, error)
+var (
+	ErrDrop = errors.New("drop")
+	ErrStop = errors.New("stop")
+)
+
+type ProcessCloser[T, Res any] interface {
+	io.Closer
+	Process(context.Context, T) (Res, error)
+}
 
 type Node[Tin, To any] struct {
 	name    string
 	builder graco.EdgeBuilder[To]
 	input   graco.TypedEdge[Tin]
 	output  graco.TypedEdge[To]
-	process ProcessorFunc[Tin, To]
+	process ProcessCloser[Tin, To]
 }
 
-func New[Tin, To any](name string, builder graco.EdgeBuilder[To], processor ProcessorFunc[Tin, To]) *Node[Tin, To] {
+func New[Tin, To any](name string, builder graco.EdgeBuilder[To], processor ProcessCloser[Tin, To]) *Node[Tin, To] {
 	res := &Node[Tin, To]{
 		name:    name,
 		builder: builder,
@@ -25,10 +36,11 @@ func New[Tin, To any](name string, builder graco.EdgeBuilder[To], processor Proc
 }
 
 func (n *Node[T, To]) Close() error {
+	err := n.process.Close()
 	if n.output == nil {
-		return nil
+		return err
 	}
-	return n.output.Close()
+	return errors.Join(err, n.output.Close())
 }
 func (n *Node[T, To]) Name() string { return n.name }
 
@@ -60,15 +72,16 @@ func (n *Node[T, To]) Start(ctx context.Context) error {
 			return err
 		}
 
-		res, err := n.process(ctx, val)
+		res, err := n.process.Process(ctx, val)
+		if errors.Is(err, ErrDrop) {
+			continue
+		}
 		if err != nil {
 			return err
 		}
 
-		if _, dst := n.output.Nodes(); dst != nil {
-			if err := n.output.Send(ctx, res); err != nil {
-				return err
-			}
+		if err := n.output.Send(ctx, res); err != nil {
+			return err
 		}
 	}
 }

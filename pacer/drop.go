@@ -3,6 +3,8 @@ package ticker
 import (
 	"context"
 	"io"
+
+	"github.com/itohio/graco"
 )
 
 type DropNode[T any] struct {

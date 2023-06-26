@@ -3,6 +3,8 @@ package fanin
 import (
 	"context"
 	"errors"
+
+	"github.com/itohio/graco"
 )
 
 type PairMakerFunc[A, B, Res any] func(A, B) (Res, error)

@@ -3,6 +3,8 @@ package fanin
 import (
 	"context"
 	"errors"
+
+	"github.com/itohio/graco"
 )
 
 type TripletMakerFunc[A, B, C, Res any] func(A, B, C) (Res, error)

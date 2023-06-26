@@ -1,34 +1,40 @@
-package counter
+package source
 
 import (
 	"context"
+	"errors"
+	"io"
 
-	"github.com/itohio/graco/ticker"
+	"github.com/itohio/graco"
 )
 
-type Node[T ticker.Countable] struct {
+type SourceCloser[T any] interface {
+	io.Closer
+	Source(context.Context) (T, error)
+}
+
+type Node[T any] struct {
 	name    string
 	builder graco.EdgeBuilder[T]
 	output  graco.TypedEdge[T]
-	start   T
-	step    T
+	f       SourceCloser[T]
 }
 
-func New[T ticker.Countable](name string, builder graco.EdgeBuilder[T], start, step T) *Node[T] {
+func New[T any](name string, builder graco.EdgeBuilder[T], f SourceCloser[T]) *Node[T] {
 	res := &Node[T]{
 		name:    name,
 		builder: builder,
-		start:   start,
-		step:    step,
+		f:       f,
 	}
 	return res
 }
 
 func (n *Node[T]) Close() error {
+	err := n.f.Close()
 	if n.output == nil {
-		return nil
+		return err
 	}
-	return n.output.Close()
+	return errors.Join(err, n.output.Close())
 }
 func (n *Node[T]) Name() string { return n.name }
 
@@ -44,9 +50,13 @@ func (n *Node[T]) Start(ctx context.Context) error {
 	}
 
 	for {
-		if err := n.output.Send(ctx, n.start); err != nil {
+		val, err := n.f.Source(ctx)
+		if err != nil {
 			return err
 		}
-		n.start += n.step
+
+		if err := n.output.Send(ctx, val); err != nil {
+			return err
+		}
 	}
 }

@@ -1,4 +1,4 @@
-package graph
+package graco
 
 import (
 	"context"
@@ -53,13 +53,14 @@ func (g *ConcurrentGraph) AddNode(seq int, n ...Node) error {
 	return nil
 }
 
-func (g *ConcurrentGraph) AddEdge(seq int, e ...Edge) {
+func (g *ConcurrentGraph) AddEdge(seq int, e ...Edge) error {
 	for _, e := range e {
 		g.edges = append(g.edges, withStartSequence[Edge]{
 			seq: seq,
 			val: e,
 		})
 	}
+	return nil
 }
 
 func (g *ConcurrentGraph) Start(pctx context.Context) error {

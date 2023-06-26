@@ -2,8 +2,10 @@ package ticker
 
 import (
 	"context"
+	"time"
 
 	"github.com/itohio/graco"
+	"github.com/itohio/graco/source"
 )
 
 type Countable interface {
@@ -14,47 +16,28 @@ type CountableInt interface {
 	~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64
 }
 
-type IndexNode[T Countable] struct {
-	name    string
-	builder graco.EdgeBuilder[T]
-	output  graco.TypedEdge[T]
-	start   T
-	step    T
+func NewIndex[T Countable](name string, builder graco.EdgeBuilder[T], start, step T) *source.Node[T] {
+	return source.New[T](
+		name,
+		builder,
+		source.Func[T](
+			func(ctx context.Context) (T, error) {
+				var s T
+				s, start = start, start+step
+				return s, nil
+			},
+		),
+	)
 }
 
-func NewIndex[T Countable](name string, builder graco.EdgeBuilder[T], start, step T) *IndexNode[T] {
-	res := &IndexNode[T]{
-		name:    name,
-		builder: builder,
-		start:   start,
-		step:    step,
-	}
-	return res
-}
-
-func (n *IndexNode[T]) Close() error {
-	if n.output == nil {
-		return nil
-	}
-	return n.output.Close()
-}
-func (n *IndexNode[T]) Name() string { return n.name }
-
-func (n *IndexNode[T]) Connect() (graco.TypedEdge[T], error) {
-	var err error
-	n.output, err = n.builder("o", n)
-	return n.output, err
-}
-
-func (n *IndexNode[T]) Start(ctx context.Context) error {
-	if err := graco.IsEdgeValid(n.output); err != nil {
-		return err
-	}
-
-	for {
-		if err := n.output.Send(ctx, n.start); err != nil {
-			return err
-		}
-		n.start += n.step
-	}
+func NewTimestamp(name string, builder graco.EdgeBuilder[int64]) *source.Node[int64] {
+	return source.New[int64](
+		name,
+		builder,
+		source.Func[int64](
+			func(ctx context.Context) (int64, error) {
+				return time.Now().Unix(), nil
+			},
+		),
+	)
 }

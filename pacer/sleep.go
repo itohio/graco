@@ -3,6 +3,8 @@ package ticker
 import (
 	"context"
 	"time"
+
+	"github.com/itohio/graco"
 )
 
 type SleeperNode[T any] struct {

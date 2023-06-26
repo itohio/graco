@@ -3,29 +3,45 @@ package sink
 import (
 	"context"
 	"io"
+
+	"github.com/itohio/graco"
 )
 
-type CloserNode struct {
-	name  string
-	input graco.TypedEdge[io.Closer]
+type SinkCloser[T any] interface {
+	io.Closer
+	Sink(context.Context, T) error
 }
 
-func NewCloser(name string) *CloserNode {
-	res := &CloserNode{
+type Node[T any] struct {
+	name  string
+	input graco.TypedEdge[T]
+	f     SinkCloser[T]
+}
+
+func New[T any](name string) *Node[T] {
+	res := &Node[T]{
 		name: name,
 	}
 	return res
 }
 
-func (n *CloserNode) Close() error { return nil }
-func (n *CloserNode) Name() string { return n.name }
+func NewFunc[T any](name string, f SinkCloser[T]) *Node[T] {
+	res := &Node[T]{
+		name: name,
+		f:    f,
+	}
+	return res
+}
 
-func (n *CloserNode) Connect(in graco.TypedEdge[io.Closer]) error {
+func (n *Node[T]) Close() error { return n.f.Close() }
+func (n *Node[T]) Name() string { return n.name }
+
+func (n *Node[T]) Connect(in graco.TypedEdge[T]) error {
 	n.input = in
 	return in.Connect(n)
 }
 
-func (n *CloserNode) Start(ctx context.Context) error {
+func (n *Node[T]) Start(ctx context.Context) error {
 	if err := graco.IsEdgeValid(n.input); err != nil {
 		return err
 	}
@@ -36,8 +52,10 @@ func (n *CloserNode) Start(ctx context.Context) error {
 			return err
 		}
 
-		if err := val.Close(); err != nil {
-			return err
+		if n.f != nil {
+			if err := n.f.Sink(ctx, val); err != nil {
+				return err
+			}
 		}
 	}
 }
