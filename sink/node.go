@@ -14,7 +14,7 @@ type SinkCloser[T any] interface {
 
 type Node[T any] struct {
 	name  string
-	input graco.TypedEdge[T]
+	input graco.SourceEdge[T]
 	f     SinkCloser[T]
 }
 
@@ -36,7 +36,7 @@ func NewFunc[T any](name string, f SinkCloser[T]) *Node[T] {
 func (n *Node[T]) Close() error { return n.f.Close() }
 func (n *Node[T]) Name() string { return n.name }
 
-func (n *Node[T]) Connect(in graco.TypedEdge[T]) error {
+func (n *Node[T]) Connect(in graco.SourceEdge[T]) error {
 	n.input = in
 	return in.Connect(n)
 }

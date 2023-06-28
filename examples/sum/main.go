@@ -19,20 +19,15 @@ type pair struct {
 }
 
 func main() {
-	builder1 := graco.NewChannelBuilder[int]("int", 1, false)
-	builder2 := graco.NewChannelBuilder[float32]("float32", 1, false)
-	builder3 := graco.NewChannelBuilder[pair]("pair", 1, false)
+	t1 := ticker.NewIndex[int]("int", 0, 1)
+	t2 := ticker.NewIndex[float32]("float32", 5, .01)
 
-	t1 := ticker.NewIndex("int", builder1, 0, 1)
-	t2 := ticker.NewIndex("float32", builder2, 5, .01)
-
-	join := fanin.NewPair("pair", builder3, func(a int, b float32) (pair, error) {
+	join := fanin.NewPair("pair", func(a int, b float32) (pair, error) {
 		return pair{i: a, f: b}, nil
 	})
 
 	sum := processor.New[pair, float32](
 		"sum",
-		builder2,
 		processor.Func[pair, float32](
 			func(ctx context.Context, p pair) (float32, error) {
 				return p.f + float32(p.i), nil

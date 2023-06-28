@@ -4,11 +4,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/itohio/graco"
 	"github.com/itohio/graco/source"
 )
 
-func NewFps(name string, builder graco.EdgeBuilder[float32], interval time.Duration, smooth float32) *source.Node[float32] {
+func NewFps(name string, interval time.Duration, smooth float32) *source.Node[float32] {
 	var (
 		counter int
 		ts      time.Time = time.Now()
@@ -17,7 +16,6 @@ func NewFps(name string, builder graco.EdgeBuilder[float32], interval time.Durat
 
 	return source.New[float32](
 		name,
-		builder,
 		source.Func[float32](
 			func(ctx context.Context) (float32, error) {
 				now := time.Now()

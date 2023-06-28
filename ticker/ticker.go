@@ -9,15 +9,13 @@ import (
 
 type Node struct {
 	name     string
-	builder  graco.EdgeBuilder[int64]
-	output   graco.TypedEdge[int64]
+	output   graco.SourceEdge[int64]
 	interval time.Duration
 }
 
-func New(name string, builder graco.EdgeBuilder[int64], interval time.Duration) *Node {
+func New(name string, interval time.Duration) *Node {
 	res := &Node{
 		name:     name,
-		builder:  builder,
 		interval: interval,
 	}
 	return res
@@ -31,9 +29,9 @@ func (n *Node) Close() error {
 }
 func (n *Node) Name() string { return n.name }
 
-func (n *Node) Connect() (graco.TypedEdge[int64], error) {
+func (n *Node) Connect() (graco.SourceEdge[int64], error) {
 	var err error
-	n.output, err = n.builder("o", n)
+	n.output, err = graco.NewSourceEdge[int64]("o", n, 1, false)
 	return n.output, err
 }
 

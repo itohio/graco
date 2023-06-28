@@ -1,4 +1,4 @@
-package ticker
+package throttle
 
 import (
 	"context"
@@ -9,16 +9,14 @@ import (
 
 type SleeperNode[T any] struct {
 	name     string
-	builder  graco.EdgeBuilder[T]
-	input    graco.TypedEdge[T]
-	output   graco.TypedEdge[T]
+	input    graco.SourceEdge[T]
+	output   graco.SourceEdge[T]
 	interval time.Duration
 }
 
-func NewSleeper[T any](name string, builder graco.EdgeBuilder[T], limit int, interval time.Duration, drop bool) *SleeperNode[T] {
+func NewSleeper[T any](name string, limit int, interval time.Duration) *SleeperNode[T] {
 	res := &SleeperNode[T]{
 		name:     name,
-		builder:  builder,
 		interval: interval,
 	}
 	return res
@@ -32,13 +30,13 @@ func (n *SleeperNode[T]) Close() error {
 }
 func (n *SleeperNode[T]) Name() string { return n.name }
 
-func (n *SleeperNode[T]) Connect(in graco.TypedEdge[T]) (graco.TypedEdge[T], error) {
+func (n *SleeperNode[T]) Connect(in graco.SourceEdge[T]) (graco.SourceEdge[T], error) {
 	n.input = in
 	err := in.Connect(n)
 	if err != nil {
 		return nil, err
 	}
-	n.output, err = n.builder("o", n)
+	n.output, err = graco.NewSourceEdge[T]("o", n, 1, false)
 	return n.output, err
 }
 

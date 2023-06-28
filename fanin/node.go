@@ -10,17 +10,15 @@ import (
 
 type Node[T any] struct {
 	name           string
-	builder        graco.EdgeBuilder[[]T]
 	synchroBuilder SynchronizerBuilder
-	inputs         []graco.TypedEdge[T]
-	output         graco.TypedEdge[[]T]
+	inputs         []graco.SourceEdge[T]
+	output         graco.SourceEdge[[]T]
 	synchro        Synchronizer
 }
 
-func New[T any](name string, builder graco.EdgeBuilder[[]T], synchro SynchronizerBuilder) *Node[T] {
+func New[T any](name string, synchro SynchronizerBuilder) *Node[T] {
 	res := &Node[T]{
 		name:           name,
-		builder:        builder,
 		synchroBuilder: synchro,
 	}
 	return res
@@ -34,7 +32,7 @@ func (n *Node[T]) Close() error {
 }
 func (n *Node[T]) Name() string { return n.name }
 
-func (n *Node[T]) Connect(in ...graco.TypedEdge[T]) (graco.TypedEdge[[]T], error) {
+func (n *Node[T]) Connect(in ...graco.SourceEdge[T]) (graco.SourceEdge[[]T], error) {
 	n.inputs = in
 	for _, i := range in {
 		err := i.Connect(n)
@@ -47,7 +45,7 @@ func (n *Node[T]) Connect(in ...graco.TypedEdge[T]) (graco.TypedEdge[[]T], error
 	if err != nil {
 		return nil, err
 	}
-	n.output, err = n.builder("o", n)
+	n.output, err = graco.NewSourceEdge[[]T]("o", n, 1, false)
 	return n.output, err
 }
 
@@ -87,7 +85,7 @@ func (n *Node[T]) Start(ctx context.Context) error {
 	var wg sync.WaitGroup
 	for i, in := range n.inputs {
 		wg.Add(1)
-		go func(i int, in graco.TypedEdge[T]) {
+		go func(i int, in graco.SourceEdge[T]) {
 			defer wg.Done()
 			for {
 				val, err := in.Recv(ctx)

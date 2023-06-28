@@ -10,19 +10,17 @@ import (
 type PairMakerFunc[A, B, Res any] func(A, B) (Res, error)
 
 type PairNode[A, B, Res any] struct {
-	name    string
-	builder graco.EdgeBuilder[Res]
-	a       graco.TypedEdge[A]
-	b       graco.TypedEdge[B]
-	output  graco.TypedEdge[Res]
-	make    PairMakerFunc[A, B, Res]
+	name   string
+	a      graco.SourceEdge[A]
+	b      graco.SourceEdge[B]
+	output graco.SourceEdge[Res]
+	make   PairMakerFunc[A, B, Res]
 }
 
-func NewPair[A, B, Res any](name string, builder graco.EdgeBuilder[Res], make PairMakerFunc[A, B, Res]) *PairNode[A, B, Res] {
+func NewPair[A, B, Res any](name string, make PairMakerFunc[A, B, Res]) *PairNode[A, B, Res] {
 	res := &PairNode[A, B, Res]{
-		name:    name,
-		builder: builder,
-		make:    make,
+		name: name,
+		make: make,
 	}
 	return res
 }
@@ -35,7 +33,7 @@ func (n *PairNode[A, B, Res]) Close() error {
 }
 func (n *PairNode[A, B, Res]) Name() string { return n.name }
 
-func (n *PairNode[A, B, Res]) Connect(a graco.TypedEdge[A], b graco.TypedEdge[B]) (graco.TypedEdge[Res], error) {
+func (n *PairNode[A, B, Res]) Connect(a graco.SourceEdge[A], b graco.SourceEdge[B]) (graco.SourceEdge[Res], error) {
 	n.a = a
 	n.b = b
 	err := a.Connect(n)
@@ -46,7 +44,7 @@ func (n *PairNode[A, B, Res]) Connect(a graco.TypedEdge[A], b graco.TypedEdge[B]
 	if err != nil {
 		return nil, err
 	}
-	n.output, err = n.builder("o", n)
+	n.output, err = graco.NewSourceEdge[Res]("o", n, 1, false)
 	return n.output, err
 }
 

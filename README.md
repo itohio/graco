@@ -26,18 +26,23 @@ system. Moreover, this approach not only simplifies the code and API but also en
 
 ## The Principle
 graco follows a principle of concurrent graph computation, where nodes represent individual computational units that 
-execute concurrently. These nodes communicate with each other using typed Golang channels, wrapped in `TypedChannel[T]`.
+execute concurrently. These nodes communicate with each other using typed Golang channels, wrapped in `SourceEdge[T]` and `DestinationEdge[T, Tresp]`.
 
 Each node in graco is implemented as e.g. a `Node[Tin, To]` structure, where `Tin` represents the input type and `To` represents 
 the output type. This structure encapsulates the essential components and behaviors of a node.
 
-In order for the node to be useful, it must contain a `Connect` method that accepts arguments of type `TypedChannel[T]`, and possibly returns one or more
-`TypedChannel[T]` values plus an error.
+In order for the node to be useful, it must contain a `Connect` method that accepts arguments of type `SourceEdge[T]` or `DestinationEdge[T, Tresp]`, and possibly returns one or more
+`SourceEdge[T]` values plus an error.
 
 ### Node Connectivity
 Nodes in graco expose a `Connect` method that allows connecting the input edge of the node to another typed edge. 
-The `Connect` method takes an argument of type `graco.TypedEdge[T]` and returns a `graco.TypedEdge[To]` along with 
+The `Connect` method takes an argument of type `SourceEdge[T]` and returns a `SourceEdge[To]` along with 
 an error. This connection establishes the flow of data between nodes.
+
+`SourceEdge[T]` is used to send data from a source node to a destination node, like a one-way street. However,
+in some situations, it is desirable to have a request-reply behavior. This is where `DestinationEdge[T, Tresp]` comes in. It 
+provides a method `Reply` that returns a feedback edge that is of type `Tresp`. This edge is used to send feedback data from destination node
+to the source node asynchronously.
 
 ### Node Execution
 The `Start` method initiates the execution of a node. It receives a context `ctx` as a parameter and runs indefinitely, 
@@ -89,20 +94,15 @@ type pair struct {
 }
 
 func main() {
-	builder1 := graco.NewChannelBuilder[int]("int", 1, false)
-	builder2 := graco.NewChannelBuilder[float32]("float32", 1, false)
-	builder3 := graco.NewChannelBuilder[pair]("pair", 1, false)
+	t1 := ticker.NewIndex[int]("int", 0, 1)
+	t2 := ticker.NewIndex[float32]("float32", 5, .01)
 
-	t1 := ticker.NewIndex("int", builder1, 0, 1)
-	t2 := ticker.NewIndex("float32", builder2, 5, .01)
-
-	join := fanin.NewPair("pair", builder3, func(a int, b float32) (pair, error) {
+	join := fanin.NewPair("pair", func(a int, b float32) (pair, error) {
 		return pair{i: a, f: b}, nil
 	})
 
 	sum := processor.New[pair, float32](
 		"sum",
-		builder2,
 		processor.Func[pair, float32](
 			func(ctx context.Context, p pair) (float32, error) {
 				return p.f + float32(p.i), nil
@@ -118,7 +118,7 @@ func main() {
 	e1, err := t1.Connect()
 	if err != nil {
 		panic(err)
-  }
+	}
 	e2, err := t2.Connect()
 	if err != nil {
 		panic(err)

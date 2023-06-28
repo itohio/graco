@@ -10,20 +10,18 @@ import (
 type TripletMakerFunc[A, B, C, Res any] func(A, B, C) (Res, error)
 
 type TripletNode[A, B, C, Res any] struct {
-	name    string
-	builder graco.EdgeBuilder[Res]
-	a       graco.TypedEdge[A]
-	b       graco.TypedEdge[B]
-	c       graco.TypedEdge[C]
-	output  graco.TypedEdge[Res]
-	make    TripletMakerFunc[A, B, C, Res]
+	name   string
+	a      graco.SourceEdge[A]
+	b      graco.SourceEdge[B]
+	c      graco.SourceEdge[C]
+	output graco.SourceEdge[Res]
+	make   TripletMakerFunc[A, B, C, Res]
 }
 
-func NewTriplet[A, B, C, Res any](name string, builder graco.EdgeBuilder[Res], make TripletMakerFunc[A, B, C, Res]) *TripletNode[A, B, C, Res] {
+func NewTriplet[A, B, C, Res any](name string, make TripletMakerFunc[A, B, C, Res]) *TripletNode[A, B, C, Res] {
 	res := &TripletNode[A, B, C, Res]{
-		name:    name,
-		builder: builder,
-		make:    make,
+		name: name,
+		make: make,
 	}
 	return res
 }
@@ -36,7 +34,7 @@ func (n *TripletNode[A, B, C, Res]) Close() error {
 }
 func (n *TripletNode[A, B, C, Res]) Name() string { return n.name }
 
-func (n *TripletNode[A, B, C, Res]) Connect(a graco.TypedEdge[A], b graco.TypedEdge[B]) (graco.TypedEdge[Res], error) {
+func (n *TripletNode[A, B, C, Res]) Connect(a graco.SourceEdge[A], b graco.SourceEdge[B]) (graco.SourceEdge[Res], error) {
 	n.a = a
 	n.b = b
 	err := a.Connect(n)
@@ -47,7 +45,7 @@ func (n *TripletNode[A, B, C, Res]) Connect(a graco.TypedEdge[A], b graco.TypedE
 	if err != nil {
 		return nil, err
 	}
-	n.output, err = n.builder("o", n)
+	n.output, err = graco.NewSourceEdge[Res]("o", n, 1, false)
 	return n.output, err
 }
 

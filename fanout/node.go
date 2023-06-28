@@ -13,16 +13,14 @@ type Cloner[T any] interface {
 
 type Node[T any] struct {
 	name    string
-	builder graco.EdgeBuilder[T]
-	input   graco.TypedEdge[T]
-	outputs []graco.TypedEdge[T]
+	input   graco.SourceEdge[T]
+	outputs []graco.SourceEdge[T]
 }
 
-func New[T any](name string, builder graco.EdgeBuilder[T], N int) *Node[T] {
+func New[T any](name string, N int) *Node[T] {
 	res := &Node[T]{
 		name:    name,
-		builder: builder,
-		outputs: make([]graco.TypedEdge[T], N),
+		outputs: make([]graco.SourceEdge[T], N),
 	}
 	return res
 }
@@ -39,11 +37,11 @@ func (n *Node[T]) Close() error {
 }
 func (n *Node[T]) Name() string { return n.name }
 
-func (n *Node[T]) Connect(in graco.TypedEdge[T]) ([]graco.TypedEdge[T], error) {
+func (n *Node[T]) Connect(in graco.SourceEdge[T]) ([]graco.SourceEdge[T], error) {
 	n.input = in
 	err := in.Connect(n)
 	for i := range n.outputs {
-		n.outputs[i], err = n.builder("o", n)
+		n.outputs[i], err = graco.NewSourceEdge[T]("o", n, 1, false)
 	}
 	return n.outputs, err
 }

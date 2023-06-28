@@ -20,16 +20,14 @@ type ProcessCloser[T, Res any] interface {
 
 type Node[Tin, To any] struct {
 	name    string
-	builder graco.EdgeBuilder[To]
-	input   graco.TypedEdge[Tin]
-	output  graco.TypedEdge[To]
+	input   graco.SourceEdge[Tin]
+	output  graco.SourceEdge[To]
 	process ProcessCloser[Tin, To]
 }
 
-func New[Tin, To any](name string, builder graco.EdgeBuilder[To], processor ProcessCloser[Tin, To]) *Node[Tin, To] {
+func New[Tin, To any](name string, processor ProcessCloser[Tin, To]) *Node[Tin, To] {
 	res := &Node[Tin, To]{
 		name:    name,
-		builder: builder,
 		process: processor,
 	}
 	return res
@@ -44,13 +42,13 @@ func (n *Node[T, To]) Close() error {
 }
 func (n *Node[T, To]) Name() string { return n.name }
 
-func (n *Node[T, To]) Connect(in graco.TypedEdge[T]) (graco.TypedEdge[To], error) {
+func (n *Node[T, To]) Connect(in graco.SourceEdge[T]) (graco.SourceEdge[To], error) {
 	n.input = in
 	err := in.Connect(n)
 	if err != nil {
 		return nil, err
 	}
-	n.output, err = n.builder("o", n)
+	n.output, err = graco.NewSourceEdge[To]("o", n, 1, false)
 	return n.output, err
 }
 

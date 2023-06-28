@@ -14,17 +14,15 @@ type SourceCloser[T any] interface {
 }
 
 type Node[T any] struct {
-	name    string
-	builder graco.EdgeBuilder[T]
-	output  graco.TypedEdge[T]
-	f       SourceCloser[T]
+	name   string
+	output graco.SourceEdge[T]
+	f      SourceCloser[T]
 }
 
-func New[T any](name string, builder graco.EdgeBuilder[T], f SourceCloser[T]) *Node[T] {
+func New[T any](name string, f SourceCloser[T]) *Node[T] {
 	res := &Node[T]{
-		name:    name,
-		builder: builder,
-		f:       f,
+		name: name,
+		f:    f,
 	}
 	return res
 }
@@ -38,9 +36,9 @@ func (n *Node[T]) Close() error {
 }
 func (n *Node[T]) Name() string { return n.name }
 
-func (n *Node[T]) Connect() (graco.TypedEdge[T], error) {
+func (n *Node[T]) Connect() (graco.SourceEdge[T], error) {
 	var err error
-	n.output, err = n.builder("o", n)
+	n.output, err = graco.NewSourceEdge[T]("o", n, 1, false)
 	return n.output, err
 }
 
